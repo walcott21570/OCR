@@ -27,7 +27,9 @@ from utils import prediction
 
 
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+
+#pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def get_rotation_angle(image):
     # Преобразование в градации серого и применение Canny edge detection

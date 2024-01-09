@@ -1,10 +1,1 @@
-freeglut3-dev
-libgtk2.0-dev
-libgl1-mesa-glx
 tesseract-ocr
-libtesseract-dev
-libtesseract4
-poppler-utils
-tesseract-ocr
-tesseract-ocr-eng
-tesseract-ocr-rus
