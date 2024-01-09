@@ -132,10 +132,10 @@ for bbox in horizontal_list[0]:
     crop_img = rotated[y_min:y_max, x_min:x_max]
 
     # Распознавание текста в этой области
-    text = pytesseract.image_to_string(crop_img, lang='en').strip()  # Используйте 'rus' для русского языка
+    text = pytesseract.image_to_string(crop_img).strip()  # Используйте 'rus' для русского языка
     
     # Получаем уровень уверенности для распознанного текста
-    ocr_data = pytesseract.image_to_data(crop_img, lang='en', output_type=pytesseract.Output.DICT)
+    ocr_data = pytesseract.image_to_data(crop_img, output_type=pytesseract.Output.DICT)
     try:
         # Берем первое значение confidence, которое не равно -1
         confidences = [conf for conf, text in zip(ocr_data['conf'], ocr_data['text']) if conf != -1 and text.strip()]
