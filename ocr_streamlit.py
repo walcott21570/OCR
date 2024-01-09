@@ -199,7 +199,7 @@ elif MODEL == 'model2':
 if WEIGHTS_PATH is not None:
     print(f'loading weights from {WEIGHTS_PATH}')
     model.load_state_dict(torch.load(WEIGHTS_PATH, map_location=torch.device('cpu')))
-    
+''' 
 def make_predictions(model, predict_path, char2idx, idx2char):
     preds = prediction(model, predict_path, char2idx, idx2char)
 
@@ -208,8 +208,23 @@ def make_predictions(model, predict_path, char2idx, idx2char):
         f.write('filename\tprediction\n')
         for item in preds.items():
             f.write(f"{item[0]}\t{item[1]}\n")
-            
+
     print(f'Predictions are saved in {DIR}/predictions.tsv')
+'''
+def make_predictions(model, predict_path, char2idx, idx2char):
+    preds = prediction(model, predict_path, char2idx, idx2char)
+
+    # Используйте временную директорию или измените путь к директории
+    output_dir = './output'  # или, например, tempfile.mkdtemp()
+    os.makedirs(output_dir, exist_ok=True)
+
+    # Сохранение результатов предсказаний
+    with open(os.path.join(output_dir, 'predictions.tsv'), 'w', encoding='utf-8') as f:
+        f.write('filename\tprediction\n')
+        for item in preds.items():
+            f.write(f"{item[0]}\t{item[1]}\n")
+
+    print(f'Predictions are saved in {output_dir}/predictions.tsv')
 
 # Функция для выполнения предсказаний
 make_predictions(model, PREDICT_PATH, char2idx, idx2char)
