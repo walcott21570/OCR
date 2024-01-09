@@ -1,6 +1,7 @@
 torch==2.0.0
 torchvision==0.15.1
-opencv-python
+#opencv-python
+opencv-python-headless
 pdf2image==1.16.3
 streamlit
 easyocr
