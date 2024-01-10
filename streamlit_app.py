@@ -74,7 +74,7 @@ if uploaded_file is not None:
             tmpfile_path = tmpfile.name
 
         # Конвертация всех страниц PDF в изображения
-        images = convert_from_path(tmpfile_path)
+        images = convert_from_path(tmpfile_path) # , poppler_path=r"c:\poppler-23.11.0\Library\bin" 
         os.unlink(tmpfile_path)
 
         # Создание горизонтального коллажа
