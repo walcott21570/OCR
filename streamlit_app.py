@@ -292,4 +292,4 @@ combined_image.paste(blank_image, (width, 0))
 
 # Отображение на Streamlit
 st.image(combined_image, caption='Распознавание текста')
-st.write(list(final_df['text'].values))
+#st.write(list(final_df['text'].values))
