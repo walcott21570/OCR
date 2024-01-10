@@ -302,12 +302,14 @@ st.write(new_df)
 # Создаем список для хранения данных
 data = []
 
+
 for index, row in results_df.iterrows():
-    # Проверяем, есть ли адекватный текст в колонке 'text'
-    if pd.notnull(row['text']) and row['text'].strip():
-        text = row['text']
+    # Проверка, если уверенность обоих OCR меньше 0.5
+    if row['easyocr_confidence'] < 0.5 and row['tesseract_confidence'] < 0.5:
+        # Сохраняем текст из исходного DataFrame, если он есть
+        text = row['text'] if pd.notnull(row['text']) and row['text'].strip() else ""
     else:
-        # Выбираем текст на основе наибольшей уверенности
+        # Иначе выбираем текст на основе наибольшей уверенности
         if pd.notnull(row['easyocr_confidence']) and pd.notnull(row['tesseract_confidence']):
             text = row['easyocr_text'] if row['easyocr_confidence'] >= row['tesseract_confidence'] else row['tesseract_text']
         else:
