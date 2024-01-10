@@ -29,7 +29,7 @@ from utils import prediction
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
-# pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'  # для запуска на ПК
+#pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'  # для запуска на ПК
 
 def get_rotation_angle(image):
     # Преобразование в градации серого и применение Canny edge detection
@@ -93,21 +93,28 @@ if uploaded_file is not None:
         # Выбор страницы и её обработка
         page_number = st.selectbox('Выберите страницу для обработки', range(1, len(images) + 1)) - 1
         selected_image = np.array(images[page_number].convert('RGB'))
-        rotated_brg = cv2.cvtColor(selected_image, cv2.COLOR_RGB2BGR)  # Конвертация в BGR
-
+        rotated_bgr = cv2.cvtColor(selected_image, cv2.COLOR_RGB2BGR)  # Конвертация в BGR
+        
         if st.button('Обработать страницу'):
-            rotated = process_image(rotated_brg)
+            rotated = process_image(rotated_bgr)
             rotated_rgb = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)  # Конвертация обратно в RGB для отображения
-            st.image(rotated_rgb, caption='Обработанное изображение')
+            st.image(rotated_rgb, caption='Поворот изображения')
 
     else:
         selected_image = np.array(Image.open(uploaded_file).convert('RGB'))
-        rotated = process_image(selected_image)
-        st.image(rotated, caption='Обработанное изображение')
+        st.image(selected_image, caption='Загруженное изображение')
+        rotated_rgb = process_image(selected_image)
+        rotated = cv2.cvtColor(rotated_rgb, cv2.COLOR_RGB2BGR)
+        st.image(rotated_rgb, caption='Поворот изображения')
 
 
 reader = easyocr.Reader(['ru'])
 horizontal_list, _  = reader.detect(rotated)
+result  = reader.readtext(rotated)
+
+st.write("Результаты распознавания текста:")
+for detection in result:
+    st.write(detection)
 
 maximum_y = rotated.shape[0]
 maximum_x = rotated.shape[1]
@@ -194,7 +201,6 @@ for index, row in df.iterrows():
 
 # Выполнение предсказаний
 pred = make_predictions(model, images_to_predict, char2idx, idx2char)
-print(pred)
 
 for index, prediction in pred.items():
     df.at[index, 'text'] = prediction
@@ -213,7 +219,7 @@ draw = ImageDraw.Draw(blank_image)
 
 # Настройки шрифта для текста
 font_path = 'DejaVuSans.ttf'  # Укажите путь к файлу шрифта
-font_size = 20
+font_size = 10
 font = ImageFont.truetype(font_path, font_size)
 
 # Рисование текста на белом изображении в соответствии с bbox

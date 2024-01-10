@@ -85,9 +85,18 @@ def make_predictions(model, predict_path, char2idx, idx2char):
 
 rotated = process_image('data/test_2.jpg')
 
+print(rotated.shape)
 reader = easyocr.Reader(['ru'])
-horizontal_list, _  = reader.detect(rotated)
+#horizontal_list, _  = reader.detect(rotated)
+#print(horizontal_list)
 
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
+
+pred = reader.readtextlang('data/test_2.jpg')
+print(pred.shape)
+#horizontal_list, _  = reader.detect(rotated)
+
+'''
 data = []
 
 # Извлекаем текст и уровень уверенности для каждого bbox
@@ -239,3 +248,4 @@ plt.figure(figsize=(15, 15))
 plt.imshow(combined_image)
 plt.axis('off')
 plt.show()
+'''
