@@ -180,7 +180,7 @@ for (bbox, text, easyocr_confidence) in result:
     # Добавление новой строки в DataFrame с помощью concat
     results_df = pd.concat([results_df, new_row], ignore_index=True)
 
-st.write(results_df)
+#st.write(results_df)
 
 #reader = easyocr.Reader(['ru'])
 #horizontal_list, _  = reader.detect(rotated)
@@ -207,28 +207,28 @@ st.write(results_df)
 
 #data = []
 
-for bbox in horizontal_list[0]:
+#for bbox in horizontal_list[0]:
     # Вырезаем область изображения по bbox
-    x_min, x_max, y_min, y_max = bbox
-    crop_img = rotated[y_min:y_max, x_min:x_max]
+#    x_min, x_max, y_min, y_max = bbox
+ #   crop_img = rotated[y_min:y_max, x_min:x_max]
 
-    # Распознавание текста в этой области
-    text = pytesseract.image_to_string(crop_img, lang='rus').strip()  # Используйте 'rus' для русского языка
+  #  # Распознавание текста в этой области
+   # text = pytesseract.image_to_string(crop_img, lang='rus').strip()  # Используйте 'rus' для русского языка
     
     # Получаем уровень уверенности для распознанного текста
-    ocr_data = pytesseract.image_to_data(crop_img, lang='rus', output_type=pytesseract.Output.DICT)
-    try:
+  #  ocr_data = pytesseract.image_to_data(crop_img, lang='rus', output_type=pytesseract.Output.DICT)
+  #  try:
         # Берем первое значение confidence, которое не равно -1
-        confidences = [conf for conf, text in zip(ocr_data['conf'], ocr_data['text']) if conf != -1 and text.strip()]
-        confidence = confidences[0] / 100.0 if confidences else -1
-    except IndexError:
-        confidence = -1
+   #     confidences = [conf for conf, text in zip(ocr_data['conf'], ocr_data['text']) if conf != -1 and text.strip()]
+    #    confidence = confidences[0] / 100.0 if confidences else -1
+    #except IndexError:
+    #    confidence = -1
 
     # Добавляем данные в список
-    data.append({'bbox': bbox, 'text': text, 'confidence': confidence})
+    #data.append({'bbox': bbox, 'text': text, 'confidence': confidence})
 
 # Создаем DataFrame из списка
-df = pd.DataFrame(data)
+#df = pd.DataFrame(data)
 
 
 # Загружаем исходное изображение и конвертируйте его в формат PIL
@@ -264,8 +264,8 @@ if WEIGHTS_PATH is not None:
 # Подготовка списка изображений для предсказания
 images_to_predict = {}
 
-for index, row in df.iterrows():
-    if row['confidence'] < 0.5:
+for index, row in results_df.iterrows():
+    if row['easyocr_confidence'] < 0.5 and row['tesseract_confidence'] < 0.5:
         x_min, x_max, y_min, y_max = row['bbox']
         x_min, x_max = min(x_min, x_max), max(x_min, x_max)
         y_min, y_max = min(y_min, y_max), max(y_min, y_max)
@@ -277,9 +277,10 @@ for index, row in df.iterrows():
 pred = make_predictions(model, images_to_predict, char2idx, idx2char)
 
 for index, prediction in pred.items():
-    df.at[index, 'text'] = prediction
+    results_df.at[index, 'text'] = prediction
 
-new_df = df.copy()
+new_df = results_df.copy()
+st.write(new_df)
 
 # Загрузка исходного изображения
 pil_original_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
