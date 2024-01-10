@@ -108,6 +108,40 @@ if uploaded_file is not None:
 
 
 reader = easyocr.Reader(['ru'])
+
+# Проход по всем изображениям и отображение bounding boxes
+rotated_viz = rotated.copy()
+
+page_results = reader.readtext(rotated, detail = 1)
+
+results = []
+
+for bbox, text, confidence in page_results:
+    results.append({
+        "text": text,
+        "confidence": confidence,
+        "bbox": bbox
+    })
+
+# Создание DataFrame из результатов
+df_east = pd.DataFrame(results)
+
+# Рисование bounding boxes
+for (bbox, text, confidence) in page_results:
+    # Разбиение bbox на координаты
+    (top_left, top_right, bottom_right, bottom_left) = bbox
+    top_left = (int(top_left[0]), int(top_left[1]))
+    bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
+
+    # Рисование прямоугольника вокруг текста
+    cv2.rectangle(rotated_viz, top_left, bottom_right, (0, 255, 0), 3)
+
+# Отображение результата с использованием cv2_imshow
+st.image(rotated_viz, caption='распознование текста')
+
+
+
+reader = easyocr.Reader(['ru'])
 horizontal_list, _  = reader.detect(rotated)
 st.write(horizontal_list)
 result  = reader.readtext(rotated)
