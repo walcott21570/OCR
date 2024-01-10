@@ -299,11 +299,11 @@ for index, prediction in pred.items():
 new_df = results_df.copy()
 st.write(new_df)
 
-# Создаем новый DataFrame
-final_df = pd.DataFrame(columns=['bbox', 'text', 'confidence'])
+# Создаем список для хранения данных
+data = []
 
 for index, row in results_df.iterrows():
-    # Используем текст из колонки text, если он доступен
+    # Используем текст из колонки 'text', если он доступен
     if pd.notnull(row['text']) and row['text'].strip():
         text = row['text']
         confidence = max(row['easyocr_confidence'], row['tesseract_confidence'])
@@ -316,8 +316,12 @@ for index, row in results_df.iterrows():
             text = row['tesseract_text']
             confidence = row['tesseract_confidence']
     
-    # Добавляем данные в финальный DataFrame
-    final_df = final_df.append({'bbox': row['bbox'], 'text': text, 'confidence': confidence}, ignore_index=True)
+    # Добавляем данные в список
+    data.append({'bbox': row['bbox'], 'text': text, 'confidence': confidence})
+
+# Создаем финальный DataFrame из списка
+final_df = pd.DataFrame(data, columns=['bbox', 'text', 'confidence'])
+
 
 st.write(final_df)
 
