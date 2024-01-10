@@ -127,9 +127,6 @@ for (bbox, text, confidence) in result:
     # Добавление прямоугольника на график
     ax.add_patch(rect)
 
-# Отображение результата с использованием cv2_imshow
-#st.image(rect, caption='распознование текста')
-
 # Создание DataFrame для сохранения результатов
 results_df = pd.DataFrame(columns=['bbox', 'easyocr_text', 'easyocr_confidence', 'tesseract_text', 'tesseract_confidence'])
 
@@ -161,7 +158,6 @@ for (bbox, text, easyocr_confidence) in result:
     tesseract_text = tesseract_text.lstrip(', ').lstrip()
 
     # Обработка уверенности Tesseract
-    #tesseract_text = tesseract_data['text']
     tesseract_conf = tesseract_data['conf'][-1]
     tesseract_confidence = tesseract_conf / 100 if tesseract_conf != -1 else tesseract_conf
 
@@ -179,57 +175,6 @@ for (bbox, text, easyocr_confidence) in result:
 
     # Добавление новой строки в DataFrame с помощью concat
     results_df = pd.concat([results_df, new_row], ignore_index=True)
-
-#st.write(results_df)
-
-#reader = easyocr.Reader(['ru'])
-#horizontal_list, _  = reader.detect(rotated)
-#st.write(horizontal_list)
-#result  = reader.readtext(rotated)
-
-#st.write("Результаты распознавания текста:")
-#for detection in result:
-#    st.write(detection)
-
-#maximum_y = rotated.shape[0]
-#maximum_x = rotated.shape[1]
-#rotated_viz = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
-
-#for box in horizontal_list[0]:
-#    x_min = max(0,box[0])
-#    x_max = min(box[1],maximum_x)
-#    y_min = max(0,box[2])
-#    y_max = min(box[3],maximum_y)
-#    cv2.rectangle(rotated_viz, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
-
-# Отображение изображения с нарисованными прямоугольниками
-#st.image(rotated_viz, caption='Обнаружение текста')
-
-#data = []
-
-#for bbox in horizontal_list[0]:
-    # Вырезаем область изображения по bbox
-#    x_min, x_max, y_min, y_max = bbox
- #   crop_img = rotated[y_min:y_max, x_min:x_max]
-
-  #  # Распознавание текста в этой области
-   # text = pytesseract.image_to_string(crop_img, lang='rus').strip()  # Используйте 'rus' для русского языка
-    
-    # Получаем уровень уверенности для распознанного текста
-  #  ocr_data = pytesseract.image_to_data(crop_img, lang='rus', output_type=pytesseract.Output.DICT)
-  #  try:
-        # Берем первое значение confidence, которое не равно -1
-   #     confidences = [conf for conf, text in zip(ocr_data['conf'], ocr_data['text']) if conf != -1 and text.strip()]
-    #    confidence = confidences[0] / 100.0 if confidences else -1
-    #except IndexError:
-    #    confidence = -1
-
-    # Добавляем данные в список
-    #data.append({'bbox': bbox, 'text': text, 'confidence': confidence})
-
-# Создаем DataFrame из списка
-#df = pd.DataFrame(data)
-
 
 # Загружаем исходное изображение и конвертируйте его в формат PIL
 pil_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
@@ -281,27 +226,14 @@ for index, row in results_df.iterrows():
         images_to_predict[index] = cropped_image
 
 
-#for index, row in results_df.iterrows():
-#    if row['easyocr_confidence'] < 0.5 and row['tesseract_confidence'] < 0.5:
- #       x_min, x_max, y_min, y_max = row['bbox']
-  #      x_min, x_max = min(x_min, x_max), max(x_min, x_max)
-   #     y_min, y_max = min(y_min, y_max), max(y_min, y_max)
-#
- #       cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
-  #      images_to_predict[index] = cropped_image
-
 # Выполнение предсказаний
 pred = make_predictions(model, images_to_predict, char2idx, idx2char)
 
 for index, prediction in pred.items():
     results_df.at[index, 'text'] = prediction
 
-new_df = results_df.copy()
-st.write(new_df)
-
 # Создаем список для хранения данных
 data = []
-
 
 for index, row in results_df.iterrows():
     # Проверка, если уверенность обоих OCR меньше 0.5
@@ -322,10 +254,6 @@ for index, row in results_df.iterrows():
     data.append({'bbox': row['bbox'], 'text': text, 'confidence': confidence})
 
 final_df = pd.DataFrame(data, columns=['bbox', 'text', 'confidence'])
-
-
-
-st.write(final_df)
 
 # Загрузка исходного изображения
 pil_original_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
@@ -365,3 +293,4 @@ combined_image.paste(blank_image, (width, 0))
 
 # Отображение на Streamlit
 st.image(combined_image, caption='Распознавание текста')
+st.write(list(final_df['text'].values))
