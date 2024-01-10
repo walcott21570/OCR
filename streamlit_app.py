@@ -106,67 +106,107 @@ if uploaded_file is not None:
         rotated = cv2.cvtColor(rotated_rgb, cv2.COLOR_RGB2BGR)
         st.image(rotated_rgb, caption='Поворот изображения')
 
+# Создание объекта чтения EasyOCR
+reader = easyocr.Reader(['ru'])  # Здесь можно указать нужный язык
 
-reader = easyocr.Reader(['ru'])
-
-# Проход по всем изображениям и отображение bounding boxes
-rotated_viz = rotated.copy()
-
-page_results = reader.readtext(rotated, detail = 1)
-
-results = []
-
-for bbox, text, confidence in page_results:
-    results.append({
-        "text": text,
-        "confidence": confidence,
-        "bbox": bbox
-    })
-
-# Создание DataFrame из результатов
-df_east = pd.DataFrame(results)
-
-# Рисование bounding boxes
-for (bbox, text, confidence) in page_results:
-    # Разбиение bbox на координаты
-    (top_left, top_right, bottom_right, bottom_left) = bbox
-    top_left = (int(top_left[0]), int(top_left[1]))
-    bottom_right = (int(bottom_right[0]), int(bottom_right[1]))
-
-    # Рисование прямоугольника вокруг текста
-    cv2.rectangle(rotated_viz, top_left, bottom_right, (0, 255, 0), 3)
-
-# Отображение результата с использованием cv2_imshow
-st.image(rotated_viz, caption='распознование текста')
-
-
-
-reader = easyocr.Reader(['ru'])
-horizontal_list, _  = reader.detect(rotated)
-st.write(horizontal_list)
+# Использование EasyOCR для детектирования текста
 result  = reader.readtext(rotated)
 
-st.write("Результаты распознавания текста:")
-for detection in result:
-    st.write(detection)
+# Создание объекта figure и axes для отображения изображения
+rotated_rgb = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+fig, ax = plt.subplots(1, figsize=(12,12))
+ax.imshow(rotated_rgb)
 
-maximum_y = rotated.shape[0]
-maximum_x = rotated.shape[1]
-rotated_viz = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+# Проход по каждой ограничивающей рамке и отрисовка ее на изображении
+for (bbox, text, confidence) in result:
+    # Получение координат рамки
+    (x_min, y_min), (x_max, y_max) = bbox[0], bbox[2]
+    width, height = x_max - x_min, y_max - y_min
+    # Создание прямоугольника: (x, y) - начальная точка, width и height - размеры
+    rect = patches.Rectangle((x_min, y_min), width, height, linewidth=1, edgecolor='g', facecolor='none')
+    # Добавление прямоугольника на график
+    ax.add_patch(rect)
 
-for box in horizontal_list[0]:
-    x_min = max(0,box[0])
-    x_max = min(box[1],maximum_x)
-    y_min = max(0,box[2])
-    y_max = min(box[3],maximum_y)
-    cv2.rectangle(rotated_viz, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
+# Отображение результата с использованием cv2_imshow
+st.image(rect, caption='распознование текста')
+
+# Создание DataFrame для сохранения результатов
+results_df = pd.DataFrame(columns=['bbox', 'easyocr_text', 'easyocr_confidence', 'tesseract_text', 'tesseract_confidence'])
+
+rotated_rgb = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+
+# Конвертация изображения NumPy в объект PIL
+pil_image = Image.fromarray(rotated_rgb)
+
+# Цикл по ограничивающим рамкам и распознавание текста в каждой из них
+for (bbox, text, easyocr_confidence) in result:
+    # Получение координат рамки
+    (x_min, y_min), (x_max, y_max) = bbox[0], bbox[2]
+
+    # Проверка и корректировка координат рамки
+    x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+    y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+
+    # Обрезка изображения по рамке
+    cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
+
+    # Распознавание текста с помощью Tesseract
+    tesseract_data = pytesseract.image_to_data(cropped_image, lang='rus', output_type=pytesseract.Output.DICT)
+
+    # Фильтрация и объединение текста от Tesseract
+    tesseract_texts = [t for t, conf in zip(tesseract_data['text'], tesseract_data['conf']) if int(conf) > -2 and t.strip()]
+    tesseract_text = ' '.join(tesseract_texts).strip()
+
+    # Удаление первых четырех запятых
+    tesseract_text = tesseract_text.lstrip(', ').lstrip()
+
+    # Обработка уверенности Tesseract
+    #tesseract_text = tesseract_data['text']
+    tesseract_conf = tesseract_data['conf'][-1]
+    tesseract_confidence = tesseract_conf / 100 if tesseract_conf != -1 else tesseract_conf
+
+    # Обработка уверенности EasyOCR
+    easyocr_confidence = round(easyocr_confidence, 2)
+
+    # Создание новой строки для DataFrame
+    new_row = pd.DataFrame({
+        'bbox': [bbox],
+        'easyocr_text': [text],
+        'easyocr_confidence': [easyocr_confidence],
+        'tesseract_text': [tesseract_text],
+        'tesseract_confidence': [tesseract_confidence]
+    })
+
+    # Добавление новой строки в DataFrame с помощью concat
+    results_df = pd.concat([results_df, new_row], ignore_index=True)
+
+st.write(results_df)
+
+#reader = easyocr.Reader(['ru'])
+#horizontal_list, _  = reader.detect(rotated)
+#st.write(horizontal_list)
+#result  = reader.readtext(rotated)
+
+#st.write("Результаты распознавания текста:")
+#for detection in result:
+#    st.write(detection)
+
+#maximum_y = rotated.shape[0]
+#maximum_x = rotated.shape[1]
+#rotated_viz = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+
+#for box in horizontal_list[0]:
+#    x_min = max(0,box[0])
+#    x_max = min(box[1],maximum_x)
+#    y_min = max(0,box[2])
+#    y_max = min(box[3],maximum_y)
+#    cv2.rectangle(rotated_viz, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
 
 # Отображение изображения с нарисованными прямоугольниками
-st.image(rotated_viz, caption='Обнаружение текста')
+#st.image(rotated_viz, caption='Обнаружение текста')
 
-data = []
+#data = []
 
-# Извлекаем текст и уровень уверенности для каждого bbox
 for bbox in horizontal_list[0]:
     # Вырезаем область изображения по bbox
     x_min, x_max, y_min, y_max = bbox
