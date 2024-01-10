@@ -29,7 +29,7 @@ from utils import prediction
 import pytesseract
 pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
-#pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'
+# pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'
 
 def get_rotation_angle(image):
     # Преобразование в градации серого и применение Canny edge detection
@@ -132,10 +132,10 @@ for bbox in horizontal_list[0]:
     crop_img = rotated[y_min:y_max, x_min:x_max]
 
     # Распознавание текста в этой области
-    text = pytesseract.image_to_string(crop_img).strip()  # Используйте 'rus' для русского языка
+    text = pytesseract.image_to_string(crop_img, lang='rus').strip()  # Используйте 'rus' для русского языка
     
     # Получаем уровень уверенности для распознанного текста
-    ocr_data = pytesseract.image_to_data(crop_img, output_type=pytesseract.Output.DICT)
+    ocr_data = pytesseract.image_to_data(crop_img, lang='rus', output_type=pytesseract.Output.DICT)
     try:
         # Берем первое значение confidence, которое не равно -1
         confidences = [conf for conf, text in zip(ocr_data['conf'], ocr_data['text']) if conf != -1 and text.strip()]
@@ -148,11 +148,13 @@ for bbox in horizontal_list[0]:
 
 # Создаем DataFrame из списка
 df = pd.DataFrame(data)
+#print(df)
 
 # Загрузите исходное изображение и конвертируйте его в формат PIL
 # rotated = cv2.imread('путь_к_вашему_изображению')
 pil_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
 
+'''
 # Путь к папке 'test'
 test_folder_path = 'test'
 
@@ -199,18 +201,17 @@ elif MODEL == 'model2':
 if WEIGHTS_PATH is not None:
     print(f'loading weights from {WEIGHTS_PATH}')
     model.load_state_dict(torch.load(WEIGHTS_PATH, map_location=torch.device('cpu')))
-''' 
-def make_predictions(model, predict_path, char2idx, idx2char):
-    preds = prediction(model, predict_path, char2idx, idx2char)
+    
+def make_predictions(model, images, char2idx, idx2char):
+    preds = {}
+    for index, img in enumerate(images):
+        # Теперь prediction функция принимает изображение напрямую
+        prediction = prediction(model, img, char2idx, idx2char)
+        preds[f'image_{index}'] = prediction
+        
+    return preds
 
-    # Сохранение результатов предсказаний
-    with open(DIR / 'predictions.tsv', 'w', encoding='utf-8') as f:
-        f.write('filename\tprediction\n')
-        for item in preds.items():
-            f.write(f"{item[0]}\t{item[1]}\n")
 
-    print(f'Predictions are saved in {DIR}/predictions.tsv')
-'''
 def make_predictions(model, predict_path, char2idx, idx2char):
     preds = prediction(model, predict_path, char2idx, idx2char)
 
@@ -226,37 +227,94 @@ def make_predictions(model, predict_path, char2idx, idx2char):
 
     print(f'Predictions are saved in {output_dir}/predictions.tsv')
 
+'''
+def make_predictions(model, images_dict, char2idx, idx2char):
+    preds = {}
+    for index, img in images_dict.items():
+        prediction_result = prediction(model, img, char2idx, idx2char)
+        preds[index] = prediction_result
+
+    return preds
+
+
+char2idx = {char: idx for idx, char in enumerate(ALPHABET)}
+idx2char = {idx: char for idx, char in enumerate(ALPHABET)}
+
+# Создание модели
+if MODEL == 'model1':
+    from models import model1
+    model = model1.TransformerModel(len(ALPHABET), hidden=HIDDEN, enc_layers=ENC_LAYERS, dec_layers=DEC_LAYERS,   
+                                    nhead=N_HEADS, dropout=0.0).to(DEVICE)
+elif MODEL == 'model2':
+    from models import model2
+    model = model2.TransformerModel(len(ALPHABET), hidden=HIDDEN, enc_layers=ENC_LAYERS, dec_layers=DEC_LAYERS,   
+                                    nhead=N_HEADS, dropout=0.0).to(DEVICE)
+
+# Загрузка весов модели
+if WEIGHTS_PATH is not None:
+    print(f'loading weights from {WEIGHTS_PATH}')
+    model.load_state_dict(torch.load(WEIGHTS_PATH, map_location=torch.device('cpu')))
+
+# Подготовка списка изображений для предсказания
+images_to_predict = {}
+
+for index, row in df.iterrows():
+    if row['confidence'] < 0.5:
+        x_min, x_max, y_min, y_max = row['bbox']
+        x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+        y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+
+        cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
+        images_to_predict[index] = cropped_image
+print(images_to_predict)
+# Выполнение предсказаний
+pred = make_predictions(model, images_to_predict, char2idx, idx2char)
+print(pred)
+
+for index, prediction in pred.items():
+    df.at[index, 'text'] = prediction
+print(df)
 # Функция для выполнения предсказаний
-make_predictions(model, PREDICT_PATH, char2idx, idx2char)
+# make_predictions(model, PREDICT_PATH, char2idx, idx2char)
 
 # Чтение файла TSV
-predictions_df = pd.read_csv('predictions.tsv', sep='\t')
+# predictions_df = pd.read_csv('predictions.tsv', sep='\t')
+# Создаем список словарей для каждой пары ключ-значение
+data = [{'filename': f'{key}.png', 'prediction': value} for key, value in pred.items()]
+
+# Преобразование списка словарей в DataFrame
+predictions_df = pd.DataFrame(data)
+
+# Сортировка DataFrame по имени файла
+predictions_df.sort_values(by='filename', inplace=True)
+
+# Переиндексация DataFrame для упорядочивания индексов
+predictions_df.reset_index(drop=True, inplace=True)
 
 # Преобразование имени файла в индекс
-predictions_df['index'] = predictions_df['filename'].str.extract(r'image_(\d+).png').astype(int)
-
+#predictions_df['index'] = predictions_df['filename'].str.extract(r'image_(\d+).png').astype(int)
+#print(predictions_df)
 # Инициализация нового столбца для предсказаний второй модели как столбца строк
-df['second_model_prediction'] = None  # или использовать '' для пустой строки
-
+#df['second_model_prediction'] = None  # или использовать '' для пустой строки
 # Обновление значений в df на основе предсказаний второй модели
-for idx, row in predictions_df.iterrows():
-    df_index = row['index']
-    df.at[df_index, 'second_model_prediction'] = row['prediction']
-    
+#for idx, row in predictions_df.iterrows():
+#    df_index = row['index']
+#    df.at[df_index, 'second_model_prediction'] = row['prediction']
+#print(df)
 # Создание нового DataFrame с измененными значениями в столбце text
 new_df = df.copy()
-
+print(new_df)
 # Функция для замены текста
-def replace_text(row):
-    if row['confidence'] < 0.5:
-        return row['second_model_prediction']
-    else:
-        return row['text']
+#def replace_text(row):
+#    if row['confidence'] < 0.5:
+#        return row['second_model_prediction']
+#    else:
+#        return row['text']
 
 # Применение функции к каждой строке
-new_df['text'] = new_df.apply(replace_text, axis=1)
-new_df = new_df.drop('second_model_prediction', axis=1)
-
+#new_df['text'] = new_df.apply(replace_text, axis=1)
+#new_df = new_df.drop('second_model_prediction', axis=1)
+#print(new_df)
 # Загрузка исходного изображения
 # rotated = cv2.imread('путь_к_вашему_изображению')
 pil_original_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))

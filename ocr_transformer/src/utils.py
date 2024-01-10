@@ -229,6 +229,26 @@ def evaluate(model, criterion, loader, case=True, punct=True):
 
 
 # MAKE PREDICTION
+def prediction(model, img, char2idx, idx2char):
+    """
+    Функция для предсказания одного изображения.
+    """
+    model.eval()
+    with torch.no_grad():
+        # Обработка и предсказание для одного изображения
+        img = process_image(np.asarray(img)).astype('uint8')
+        img = img / img.max()
+        img = np.transpose(img, (2, 0, 1))
+
+        src = torch.FloatTensor(img).unsqueeze(0).to(DEVICE)
+        if CHANNELS == 1:
+            src = transforms.Grayscale(CHANNELS)(src)
+        out_indexes = model.predict(src)
+        pred = indicies_to_text(out_indexes[0], idx2char)
+
+    return pred
+
+'''
 def prediction(model, test_dir, char2idx, idx2char):
     """
     params
@@ -268,7 +288,7 @@ def prediction(model, test_dir, char2idx, idx2char):
             preds[filename] = pred
 
     return preds
-
+'''
 
 class ToTensor(object):
     def __init__(self, X_type=None, Y_type=None):
