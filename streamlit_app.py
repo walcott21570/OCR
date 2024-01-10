@@ -52,7 +52,6 @@ def get_rotation_angle(image):
 
 def process_image(image):
     # Получение угла наклона
-    # image = cv2.cvtColor(np.array(images[2]), cv2.COLOR_RGB2BGR) 
     angle = get_rotation_angle(image)
 
     # Поворот изображения
@@ -110,6 +109,7 @@ if uploaded_file is not None:
 
 reader = easyocr.Reader(['ru'])
 horizontal_list, _  = reader.detect(rotated)
+st.write(horizontal_list)
 result  = reader.readtext(rotated)
 
 st.write("Результаты распознавания текста:")
