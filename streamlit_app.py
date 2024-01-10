@@ -128,7 +128,7 @@ for (bbox, text, confidence) in result:
     ax.add_patch(rect)
 
 # Отображение результата с использованием cv2_imshow
-st.image(rect, caption='распознование текста')
+#st.image(rect, caption='распознование текста')
 
 # Создание DataFrame для сохранения результатов
 results_df = pd.DataFrame(columns=['bbox', 'easyocr_text', 'easyocr_confidence', 'tesseract_text', 'tesseract_confidence'])
