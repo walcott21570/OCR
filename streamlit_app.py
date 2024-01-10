@@ -267,12 +267,28 @@ images_to_predict = {}
 st.write(results_df)
 for index, row in results_df.iterrows():
     if row['easyocr_confidence'] < 0.5 and row['tesseract_confidence'] < 0.5:
-        x_min, x_max, y_min, y_max = row['bbox']
-        x_min, x_max = min(x_min, x_max), max(x_min, x_max)
-        y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+        # Извлекаем координаты из bbox
+        bbox = row['bbox']
+        x_coords = [point[0] for point in bbox]
+        y_coords = [point[1] for point in bbox]
 
+        # Находим минимальные и максимальные координаты
+        x_min, x_max = min(x_coords), max(x_coords)
+        y_min, y_max = min(y_coords), max(y_coords)
+
+        # Вырезаем изображение
         cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
         images_to_predict[index] = cropped_image
+
+
+#for index, row in results_df.iterrows():
+#    if row['easyocr_confidence'] < 0.5 and row['tesseract_confidence'] < 0.5:
+ #       x_min, x_max, y_min, y_max = row['bbox']
+  #      x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+   #     y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+#
+ #       cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
+  #      images_to_predict[index] = cropped_image
 
 # Выполнение предсказаний
 pred = make_predictions(model, images_to_predict, char2idx, idx2char)
