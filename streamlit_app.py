@@ -304,7 +304,7 @@ data = []
 
 for index, row in results_df.iterrows():
     # Используем текст из колонки 'text', если он доступен
-    if pd.notnull(row['text']) and row['text'].strip():
+    if row['text'] > 0:
         text = row['text']
         confidence = max(row['easyocr_confidence'], row['tesseract_confidence'])
     else:
