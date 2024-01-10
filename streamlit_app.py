@@ -299,6 +299,28 @@ for index, prediction in pred.items():
 new_df = results_df.copy()
 st.write(new_df)
 
+# Создаем новый DataFrame
+final_df = pd.DataFrame(columns=['bbox', 'text', 'confidence'])
+
+for index, row in results_df.iterrows():
+    # Используем текст из колонки text, если он доступен
+    if pd.notnull(row['text']) and row['text'].strip():
+        text = row['text']
+        confidence = max(row['easyocr_confidence'], row['tesseract_confidence'])
+    else:
+        # Иначе выбираем текст с наибольшей уверенностью
+        if row['easyocr_confidence'] > row['tesseract_confidence']:
+            text = row['easyocr_text']
+            confidence = row['easyocr_confidence']
+        else:
+            text = row['tesseract_text']
+            confidence = row['tesseract_confidence']
+    
+    # Добавляем данные в финальный DataFrame
+    final_df = final_df.append({'bbox': row['bbox'], 'text': text, 'confidence': confidence}, ignore_index=True)
+
+st.write(final_df)
+
 # Загрузка исходного изображения
 pil_original_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
 
