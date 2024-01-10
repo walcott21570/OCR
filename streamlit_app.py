@@ -303,24 +303,24 @@ st.write(new_df)
 data = []
 
 for index, row in results_df.iterrows():
-    # Используем текст из колонки 'text', если он доступен
-    if row['text'] > 0:
+    # Проверяем, есть ли адекватный текст в колонке 'text'
+    if pd.notnull(row['text']) and row['text'].strip():
         text = row['text']
-        confidence = max(row['easyocr_confidence'], row['tesseract_confidence'])
     else:
-        # Иначе выбираем текст с наибольшей уверенностью
-        if row['easyocr_confidence'] > row['tesseract_confidence']:
-            text = row['easyocr_text']
-            confidence = row['easyocr_confidence']
+        # Выбираем текст на основе наибольшей уверенности
+        if pd.notnull(row['easyocr_confidence']) and pd.notnull(row['tesseract_confidence']):
+            text = row['easyocr_text'] if row['easyocr_confidence'] >= row['tesseract_confidence'] else row['tesseract_text']
         else:
-            text = row['tesseract_text']
-            confidence = row['tesseract_confidence']
+            # Если один из показателей уверенности отсутствует, используем доступный текст
+            text = row['easyocr_text'] if pd.notnull(row['easyocr_confidence']) else row['tesseract_text']
     
-    # Добавляем данные в список
+    # Выбираем наибольшую уверенность
+    confidence = max(row['easyocr_confidence'], row['tesseract_confidence'])
+
     data.append({'bbox': row['bbox'], 'text': text, 'confidence': confidence})
 
-# Создаем финальный DataFrame из списка
 final_df = pd.DataFrame(data, columns=['bbox', 'text', 'confidence'])
+
 
 
 st.write(final_df)
