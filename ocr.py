@@ -230,7 +230,7 @@ for _, row in new_df.iterrows():
 total_width = width * 2
 combined_image = Image.new('RGB', (total_width, height))
 
-# Размещение исходного и текстового изображений на общей канве
+# Размещение исходного и текстового изображений на общей изображении
 combined_image.paste(pil_original_image, (0, 0))
 combined_image.paste(blank_image, (width, 0))
 
