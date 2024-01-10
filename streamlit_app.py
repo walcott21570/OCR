@@ -264,6 +264,7 @@ if WEIGHTS_PATH is not None:
 # Подготовка списка изображений для предсказания
 images_to_predict = {}
 
+st.write(results_df)
 for index, row in results_df.iterrows():
     if row['easyocr_confidence'] < 0.5 and row['tesseract_confidence'] < 0.5:
         x_min, x_max, y_min, y_max = row['bbox']
