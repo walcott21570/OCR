@@ -337,8 +337,10 @@ font_size = 10
 font = ImageFont.truetype(font_path, font_size)
 
 # Рисование текста на белом изображении в соответствии с bbox
-for _, row in new_df.iterrows():
-    x_min, x_max, y_min, y_max = row['bbox']
+for _, row in final_df.iterrows():
+    # Преобразование bbox формата
+    x_min, y_min = row['bbox'][0]
+    x_max, y_max = row['bbox'][1]
     text = row['text']
     
     # Расчет позиции для текста
@@ -355,4 +357,5 @@ combined_image = Image.new('RGB', (total_width, height))
 combined_image.paste(pil_original_image, (0, 0))
 combined_image.paste(blank_image, (width, 0))
 
-st.image(combined_image, caption='Распознование текста')
+# Отображение на Streamlit
+st.image(combined_image, caption='Распознавание текста')
