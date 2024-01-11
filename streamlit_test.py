@@ -27,9 +27,9 @@ from utils import prediction
 
 
 import pytesseract
-# pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
-pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'  # для запуска на ПК
+# pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'  # для запуска на ПК
 
 def get_rotation_angle(image):
     # Преобразование в градации серого и применение Canny edge detection
@@ -70,7 +70,7 @@ def uploaded_image(uploaded_file):
             tmpfile.write(uploaded_file.getvalue())
             tmpfile_path = tmpfile.name
 
-        images = convert_from_path(tmpfile_path, poppler_path=r"c:\poppler-23.11.0\Library\bin")
+        images = convert_from_path(tmpfile_path)
         os.unlink(tmpfile_path)
     else:
         images = [Image.open(uploaded_file).convert('RGB')]
@@ -103,7 +103,21 @@ def get_page(images, page_number):
 def text_detection(rotated):
     reader = easyocr.Reader(['ru'])  # Инициализация easyocr.Reader для русского языка
     horizontal_list, _ = reader.detect(rotated)  # Определение расположения текста
-    return horizontal_list
+    return horizontal_list[0]
+
+@st.cache_data
+def visualize_text_detection(rotated, horizontal_list):
+    maximum_y, maximum_x = rotated.shape[:2]
+    rotated_viz = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
+
+    for box in horizontal_list:
+        x_min = max(0, int(box[0]))
+        x_max = min(int(box[1]), maximum_x)
+        y_min = max(0, int(box[2]))
+        y_max = min(int(box[3]), maximum_y)
+        cv2.rectangle(rotated_viz, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2)
+
+    return rotated_viz
 
 st.title("OCR Преобразователь")
 uploaded_file = st.file_uploader("Загрузите изображение или PDF", type=["png", "jpg", "jpeg", "pdf"])
@@ -115,7 +129,9 @@ if uploaded_file is not None:
     if st.button('Обработать страницу') and page_number is not None:
         rotated = get_page(images, page_number)
         horizontal_list = text_detection(rotated)
-        
+        print(horizontal_list)
+        rotated_viz = visualize_text_detection(rotated, horizontal_list)
+        st.image(rotated_viz, caption='Обнаружение текста')
 
 
 # def create_model(model_type, alphabet, hidden, enc_layers, dec_layers, n_heads, dropout, device, weights_path):
