@@ -27,7 +27,7 @@ from utils import prediction
 
 
 import pytesseract
-# pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+#pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 
 pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'  # для запуска на ПК
 
@@ -65,14 +65,14 @@ def process_image(image):
 
     return rotated
 
-@st.cache_data
+#@st.cache_data
 def uploaded_image(uploaded_file):
     if uploaded_file.type == "application/pdf":
         with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
             tmpfile.write(uploaded_file.getvalue())
             tmpfile_path = tmpfile.name
 
-        images = convert_from_path(tmpfile_path, poppler_path=r"c:\poppler-23.11.0\Library\bin")
+        images = convert_from_path(tmpfile_path, poppler_path=r"c:\poppler-23.11.0\Library\bin") # , poppler_path=r"c:\poppler-23.11.0\Library\bin"
         os.unlink(tmpfile_path)
     else:
         images = [Image.open(uploaded_file).convert('RGB')]
@@ -230,4 +230,6 @@ if uploaded_file is not None:
         pred = make_prediction_transforomer(model, df, rotated, ALPHABET, confidence_threshold=0.5)
         combined_image = create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_size=20)
         st.image(combined_image, caption='Распознование текста')
-        #st.write(list(df['text'].values))
+        #st.write(list(df['text'].values), unsafe_allow_html=True)
+        text_to_display = ' '.join(df['text'].astype(str).tolist())
+        st.write(text_to_display)
