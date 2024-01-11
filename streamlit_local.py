@@ -149,10 +149,6 @@ for bbox in horizontal_list[0]:
 # Создаем DataFrame из списка
 df = pd.DataFrame(data)
 
-
-# Загружаем исходное изображение и конвертируйте его в формат PIL
-pil_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
-
 def make_predictions(model, images_dict, char2idx, idx2char):
     preds = {}
     for index, img in images_dict.items():
@@ -161,6 +157,7 @@ def make_predictions(model, images_dict, char2idx, idx2char):
 
     return preds
 
+pil_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
 
 char2idx = {char: idx for idx, char in enumerate(ALPHABET)}
 idx2char = {idx: char for idx, char in enumerate(ALPHABET)}
