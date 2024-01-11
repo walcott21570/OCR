@@ -194,7 +194,6 @@ for index, row in df.iterrows():
 
 # Выполнение предсказаний
 pred = make_predictions(model, images_to_predict, char2idx, idx2char)
-print(pred)
 
 for index, prediction in pred.items():
     df.at[index, 'text'] = prediction
