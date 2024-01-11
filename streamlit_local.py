@@ -1,8 +1,10 @@
+import streamlit as st
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
 import matplotlib.patches as patches
 from pdf2image import convert_from_path
+import tempfile
 import easyocr
 import pandas as pd
 import subprocess
@@ -25,7 +27,9 @@ from utils import prediction
 
 
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'
+# pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+
+pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'  # для запуска на ПК
 
 def get_rotation_angle(image):
     # Преобразование в градации серого и применение Canny edge detection
@@ -46,17 +50,9 @@ def get_rotation_angle(image):
     median_angle = np.median(angles)
     return median_angle
 
-def process_image(file_path):
-    # Определение формата файла
-    if file_path.lower().endswith('.pdf'):
-        # Обработка PDF
-        images = convert_from_path(file_path, poppler_path=r"c:\poppler-23.11.0\Library\bin")
-        image = cv2.cvtColor(np.array(images[2]), cv2.COLOR_RGB2BGR)  # обработка первой страницы
-    else:
-        # Обработка изображений в формате JPG
-        image = cv2.imread(file_path)
-   
-   # Получение угла наклона
+def process_image(image):
+    # Получение угла наклона
+    # image = cv2.cvtColor(np.array(images[2]), cv2.COLOR_RGB2BGR) 
     angle = get_rotation_angle(image)
 
     # Поворот изображения
@@ -65,14 +61,50 @@ def process_image(file_path):
     M = cv2.getRotationMatrix2D(center, angle, 1.0)
     rotated = cv2.warpAffine(image, M, (w, h), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
 
-    # Вывод или сохранение результатов
-    ##plt.figure(figsize=(10, 10))
-    #plt.imshow(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
-    #plt.show()
-
     return rotated
 
-rotated = process_image('data/3_ДГО 2.PDF')
+# Streamlit интерфейс
+st.title("OCR Преобразователь")
+
+uploaded_file = st.file_uploader("Загрузите изображение или PDF", type=["png", "jpg", "jpeg", "pdf"])
+if uploaded_file is not None:
+    if uploaded_file.type == "application/pdf":
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmpfile:
+            tmpfile.write(uploaded_file.getvalue())
+            tmpfile_path = tmpfile.name
+
+        # Конвертация всех страниц PDF в изображения
+        images = convert_from_path(tmpfile_path, poppler_path=r"c:\poppler-23.11.0\Library\bin" ) # , poppler_path=r"c:\poppler-23.11.0\Library\bin" 
+        os.unlink(tmpfile_path)
+
+        # Создание горизонтального коллажа
+        widths, heights = zip(*(i.size for i in images))
+        total_width = sum(widths)
+        max_height = max(heights)
+        collage = Image.new('RGB', (total_width, max_height))
+        
+        x_offset = 0
+        for img in images:
+            collage.paste(img, (x_offset, 0))
+            x_offset += img.size[0]
+
+        st.image(collage, caption='Все страницы PDF')
+
+        # Выбор страницы и её обработка
+        page_number = st.selectbox('Выберите страницу для обработки', range(1, len(images) + 1)) - 1
+        selected_image = np.array(images[page_number].convert('RGB'))
+        rotated_brg = cv2.cvtColor(selected_image, cv2.COLOR_RGB2BGR)  # Конвертация в BGR
+
+        if st.button('Обработать страницу'):
+            rotated = process_image(rotated_brg)
+            rotated_rgb = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)  # Конвертация обратно в RGB для отображения
+            st.image(rotated_rgb, caption='Обработанное изображение')
+
+    else:
+        selected_image = np.array(Image.open(uploaded_file).convert('RGB'))
+        rotated = process_image(selected_image)
+        st.image(rotated, caption='Обработанное изображение')
+
 
 reader = easyocr.Reader(['ru'])
 horizontal_list, _  = reader.detect(rotated)
@@ -87,6 +119,9 @@ for box in horizontal_list[0]:
     y_min = max(0,box[2])
     y_max = min(box[3],maximum_y)
     cv2.rectangle(rotated_viz, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
+
+# Отображение изображения с нарисованными прямоугольниками
+st.image(rotated_viz, caption='Обнаружение текста')
 
 data = []
 
@@ -159,6 +194,7 @@ for index, row in df.iterrows():
 
 # Выполнение предсказаний
 pred = make_predictions(model, images_to_predict, char2idx, idx2char)
+print(pred)
 
 for index, prediction in pred.items():
     df.at[index, 'text'] = prediction
@@ -199,9 +235,4 @@ combined_image = Image.new('RGB', (total_width, height))
 combined_image.paste(pil_original_image, (0, 0))
 combined_image.paste(blank_image, (width, 0))
 
-print(list(new_df['text'].values))
-# Отображение результата
-plt.figure(figsize=(15, 15))
-plt.imshow(combined_image)
-plt.axis('off')
-plt.show()
+st.image(combined_image, caption='Распознование текста')
