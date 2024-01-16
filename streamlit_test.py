@@ -78,7 +78,7 @@ def uploaded_image(uploaded_file):
         images = [Image.open(uploaded_file).convert('RGB')]
     return images
 
-@st.cache_data
+#@st.cache_data
 def prepate_collage(_images):
     widths, heights = zip(*(i.size for i in images))
     total_width = sum(widths)
@@ -230,6 +230,5 @@ if uploaded_file is not None:
         pred = make_prediction_transforomer(model, df, rotated, ALPHABET, confidence_threshold=0.5)
         combined_image = create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_size=20)
         st.image(combined_image, caption='Распознование текста')
-        #st.write(list(df['text'].values), unsafe_allow_html=True)
         text_to_display = ' '.join(df['text'].astype(str).tolist())
         st.write(text_to_display)
