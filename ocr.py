@@ -51,7 +51,7 @@ def process_image(file_path):
     if file_path.lower().endswith('.pdf'):
         # Обработка PDF
         images = convert_from_path(file_path, poppler_path=r"c:\poppler-23.11.0\Library\bin")
-        image = cv2.cvtColor(np.array(images[2]), cv2.COLOR_RGB2BGR)  # обработка первой страницы
+        image = cv2.cvtColor(np.array(images[0]), cv2.COLOR_RGB2BGR)  # обработка первой страницы
     else:
         # Обработка изображений в формате JPG
         image = cv2.imread(file_path)
@@ -72,7 +72,8 @@ def process_image(file_path):
 
     return rotated
 
-rotated = process_image('data/3_ДГО 2.PDF')
+rotated = process_image('data/Акт № 1_08022_1014 от 30.09.23.PDF')
+print(rotated)
 
 reader = easyocr.Reader(['ru'])
 horizontal_list, _  = reader.detect(rotated)

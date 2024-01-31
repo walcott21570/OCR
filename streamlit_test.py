@@ -182,7 +182,6 @@ def make_prediction_transforomer(_model, df, rotated, alphabet, confidence_thres
 def create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_size=20):
     for index, prediction in pred.items():
         df.at[index, 'text'] = prediction
-    
     # Загрузка исходного изображения
     pil_original_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
 
