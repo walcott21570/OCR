@@ -106,7 +106,7 @@ if uploaded_file is not None:
         st.image(rotated, caption='Обработанное изображение')
 
 
-reader = easyocr.Reader(['ru'])
+reader = easyocr.Reader(['ru', 'en'], gpu = False, detector = 'craft') 
 horizontal_list, _  = reader.detect(rotated)
 
 maximum_y = rotated.shape[0]

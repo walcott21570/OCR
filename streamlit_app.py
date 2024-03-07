@@ -1,3 +1,5 @@
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 import streamlit as st
 import cv2
 import numpy as np
@@ -9,7 +11,6 @@ import easyocr
 import pandas as pd
 import subprocess
 from PIL import Image
-import os
 import shutil
 from PIL import Image, ImageDraw, ImageFont
 import torch

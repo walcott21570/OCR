@@ -1,3 +1,5 @@
+import os
+os.environ['KMP_DUPLICATE_LIB_OK']='True'
 import cv2
 import numpy as np
 from matplotlib import pyplot as plt
@@ -7,7 +9,6 @@ import easyocr
 import pandas as pd
 import subprocess
 from PIL import Image
-import os
 import shutil
 from PIL import Image, ImageDraw, ImageFont
 import torch
@@ -72,10 +73,10 @@ def process_image(file_path):
 
     return rotated
 
-rotated = process_image('data/Акт № 1_08022_1014 от 30.09.23.PDF')
-print(rotated)
+rotated = process_image('data/test_4.png')
+#print(rotated)
 
-reader = easyocr.Reader(['ru'])
+reader = easyocr.Reader(['ru', 'en'], gpu = False) #detector = 'dbnet18'
 horizontal_list, _  = reader.detect(rotated)
 
 maximum_y = rotated.shape[0]
@@ -88,6 +89,8 @@ for box in horizontal_list[0]:
     y_min = max(0,box[2])
     y_max = min(box[3],maximum_y)
     cv2.rectangle(rotated_viz, (x_min, y_min), (x_max, y_max), (0, 0, 255), 2)
+
+plt.imshow(rotated_viz)
 
 data = []
 
