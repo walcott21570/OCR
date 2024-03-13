@@ -28,7 +28,8 @@ from utils import prediction
 
 
 import pytesseract
-pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+#pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
+pytesseract.pytesseract.tesseract_cmd = r'g:\vadim\Tesseract-OCR\tesseract.exe'
 
 #pytesseract.pytesseract.tesseract_cmd = r'c:\Program Files\Tesseract-OCR\tesseract.exe'  # для запуска на ПК
 
@@ -74,7 +75,8 @@ if uploaded_file is not None:
             tmpfile_path = tmpfile.name
 
         # Конвертация всех страниц PDF в изображения
-        images = convert_from_path(tmpfile_path) # , poppler_path=r"c:\poppler-23.11.0\Library\bin" 
+        images = convert_from_path(tmpfile_path, poppler_path=r"g:\vadim\poppler-24.02.0\Library\bin")
+        #images = convert_from_path(tmpfile_path) # , poppler_path=r"c:\poppler-23.11.0\Library\bin" 
         os.unlink(tmpfile_path)
 
         # Создание горизонтального коллажа
@@ -110,6 +112,7 @@ if uploaded_file is not None:
 # Создание объекта чтения EasyOCR
 reader = easyocr.Reader(['ru'])  # Здесь можно указать нужный язык
 
+print(rotated.shape)
 # Использование EasyOCR для детектирования текста
 result  = reader.readtext(rotated)
 
@@ -127,11 +130,9 @@ for (bbox, text, confidence) in result:
     rect = patches.Rectangle((x_min, y_min), width, height, linewidth=1, edgecolor='g', facecolor='none')
     # Добавление прямоугольника на график
     ax.add_patch(rect)
-
+    
 # Создание DataFrame для сохранения результатов
 results_df = pd.DataFrame(columns=['bbox', 'easyocr_text', 'easyocr_confidence', 'tesseract_text', 'tesseract_confidence'])
-
-rotated_rgb = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
 
 # Конвертация изображения NumPy в объект PIL
 pil_image = Image.fromarray(rotated_rgb)
@@ -146,6 +147,7 @@ for (bbox, text, easyocr_confidence) in result:
     y_min, y_max = min(y_min, y_max), max(y_min, y_max)
 
     # Обрезка изображения по рамке
+    print(x_min, y_min, x_max, y_max)
     cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
 
     # Распознавание текста с помощью Tesseract

@@ -33,7 +33,7 @@ import pytesseract
 #pytesseract.pytesseract.tesseract_cmd = r'/usr/bin/tesseract'
 pytesseract.pytesseract.tesseract_cmd = r'g:\vadim\Tesseract-OCR\tesseract.exe'  # r'c:\Program Files\Tesseract-OCR\tesseract.exe'
 
-@st.cache_data
+#@st.cache_data
 def get_rotation_angle(image):
     gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
     edges = cv2.Canny(gray, 50, 150, apertureSize=3)
@@ -64,7 +64,7 @@ def rotate_image(image, angle):
     rotated = cv2.warpAffine(image, M, (new_width, new_height), flags=cv2.INTER_CUBIC, borderMode=cv2.BORDER_REPLICATE)
     return rotated
 
-@st.cache_data
+#@st.cache_data
 def process_image(image):
     angle = get_rotation_angle(image)
     rotated = rotate_image(image, angle)
@@ -107,83 +107,109 @@ def get_page(images, page_number):
     st.image(rotated_rgb, caption='Обработанное изображение')
     return rotated
 
-@st.cache_data
-def text_detection(rotated):
+def make_prediction_easyocr(rotated):
     reader = easyocr.Reader(['ru'])  
-    horizontal_list, _ = reader.detect(rotated)  
-    return horizontal_list[0]
+    result  = reader.readtext(rotated) 
+    return result
 
-def rotated_image_check(rotated):
-    horizontal_original = text_detection(rotated)
+def rotated_image_check(rotated, result):
     confidences_original = []
-    for bbox in horizontal_original[:5]:
-        x_min, x_max, y_min, y_max = bbox
-        crop_img = rotated[y_min:y_max, x_min:x_max]
-        ocr_data = pytesseract.image_to_data(crop_img, lang='rus+eng', output_type=pytesseract.Output.DICT)
-        confidence_1 = [conf for conf in ocr_data['conf']]
-        confidences_original.append(confidence_1)
-    original_avg_conf = round(statistics.mean([item for sublist in confidences_original for item in sublist]), 2)
-    
-    if original_avg_conf<50:
-        confidences_change = []
-        rotated_image = cv2.rotate(rotated, cv2.ROTATE_180)
-        horizontal_changes = text_detection(rotated_image)
-        for bbox in horizontal_changes[:5]:
-            x_min, x_max, y_min, y_max = bbox
-            crop_img = rotated_image[y_min:y_max, x_min:x_max]
-            ocr_data = pytesseract.image_to_data(crop_img, lang='rus+eng', output_type=pytesseract.Output.DICT)
-            confidence_2 = [conf for conf in ocr_data['conf']]
-            confidences_change.append(confidence_2)
-        change_avg_conf = round(statistics.mean([item for sublist in confidences_change for item in sublist]), 2)
+    for (bbox, text, confidence) in result:
+        confidences_original.append(confidence)
+    original_avg_conf = round(statistics.mean(confidences_original), 2)
+    print(original_avg_conf)
+    if original_avg_conf<0.5:
+        confidences_change = []   
+        rotated_change = cv2.rotate(rotated, cv2.ROTATE_180)
+        reader = easyocr.Reader(['ru'])  
+        result_change  = reader.readtext(rotated_change)
+        for (bbox, text, confidence) in result_change:
+            confidences_change.append(confidence)
+        change_avg_conf = round(statistics.mean(confidences_change), 2)
+        print(change_avg_conf)
 
         if original_avg_conf > change_avg_conf:
             print(f'Изображение оставлено без изменений. Средняя уверенность первых значений OCR: {original_avg_conf} > {change_avg_conf}')
-            return rotated, horizontal_original
+            return rotated, result
         else:
             print(f'Изображение было повернуто. Средняя уверенность первых значений OCR: {change_avg_conf} > {original_avg_conf}')
-            return rotated_image, horizontal_changes
+            return rotated_change, result_change
     
     else:
         print(f'Изображение оставлено без изменений. Средняя уверенность OCR: {original_avg_conf}')
-        return rotated, original_avg_conf 
-    
-@st.cache_data
-def visualize_text_detection(rotated, horizontal_list):
-    maximum_y, maximum_x = rotated.shape[:2]
+        return rotated, result 
+
+def visualize_text_detection(rotated, result):
     rotated_viz = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
     
-    for box in horizontal_list:
-        x_min = max(0, int(box[0]))
-        x_max = min(int(box[1]), maximum_x)
-        y_min = max(0, int(box[2]))
-        y_max = min(int(box[3]), maximum_y)
-        cv2.rectangle(rotated_viz, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2)
+    for (bbox, text, easyocr_confidence) in result:
+        # Получение координат рамки
+        #print(bbox)
+        (x_min, y_min), (x_max, y_max) = bbox[0], bbox[2]
+        #print(x_min, y_min, x_max, y_max)
+        
+        # Проверка и корректировка координат рамки
+        x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+        y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+
+        cv2.rectangle(rotated_viz, (int(x_min), int(y_min)), (int(x_max), int(y_max)), (255, 0, 0), 2)
 
     return rotated_viz
- 
-@st.cache_data
-def make_prediction_tesseract(rotated, horizontal_list):
-    data = []
 
-    for bbox in horizontal_list:
-        x_min, x_max, y_min, y_max = bbox
-        crop_img = rotated[y_min:y_max, x_min:x_max]
+def make_prediction_tesseract(rotated, result):
+    # Создание DataFrame для сохранения результатов
+    results_df = pd.DataFrame(columns=['bbox', 'easyocr_text', 'easyocr_confidence', 'tesseract_text', 'tesseract_confidence'])
 
-        text = pytesseract.image_to_string(crop_img, lang='rus+eng').strip()
-        
-        ocr_data = pytesseract.image_to_data(crop_img, lang='rus+eng', output_type=pytesseract.Output.DICT)
-        try:
-            confidences = [conf for conf, text in zip(ocr_data['conf'], ocr_data['text']) if conf != -1 and text.strip()]
-            confidence = confidences[0] / 100.0 if confidences else -1
-        except IndexError:
-            confidence = -1
+    rotated_rgb = cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB)
 
-        data.append({'bbox': bbox, 'text': text, 'confidence': confidence})
+    # Конвертация изображения NumPy в объект PIL
+    pil_image = Image.fromarray(rotated_rgb)
 
-    return pd.DataFrame(data)
+    # Цикл по ограничивающим рамкам и распознавание текста в каждой из них
+    for (bbox, text, easyocr_confidence) in result:
+        # Получение координат рамки
+        (x_min, y_min), (x_max, y_max) = bbox[0], bbox[2]
 
-@st.cache_data
-def create_model(model_type, alphabet, hidden, enc_layers, dec_layers, n_heads, dropout, device, weights_path):
+        # Проверка и корректировка координат рамки
+        x_min, x_max = min(x_min, x_max), max(x_min, x_max)
+        y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+
+        # Обрезка изображения по рамке
+        cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
+        #cropped_image = rotated[y_min:y_max, x_min:x_max]
+
+        # Распознавание текста с помощью Tesseract
+        tesseract_data = pytesseract.image_to_data(cropped_image, lang='rus+eng', output_type=pytesseract.Output.DICT)
+
+        # Фильтрация и объединение текста от Tesseract
+        tesseract_texts = [t for t, conf in zip(tesseract_data['text'], tesseract_data['conf']) if int(conf) > -2 and t.strip()]
+        tesseract_text = ' '.join(tesseract_texts).strip()
+
+        # Удаление первых четырех запятых
+        tesseract_text = tesseract_text.lstrip(', ').lstrip()
+
+        # Обработка уверенности Tesseract
+        tesseract_conf = tesseract_data['conf'][-1]
+        tesseract_confidence = tesseract_conf / 100 if tesseract_conf != -1 else tesseract_conf
+
+        # Обработка уверенности EasyOCR
+        easyocr_confidence = round(easyocr_confidence, 2)
+
+        # Создание новой строки для DataFrame
+        new_row = pd.DataFrame({
+            'bbox': [bbox],
+            'easyocr_text': [text],
+            'easyocr_confidence': [easyocr_confidence],
+            'tesseract_text': [tesseract_text],
+            'tesseract_confidence': [tesseract_confidence]
+        })
+
+        # Добавление новой строки в DataFrame с помощью concat
+        results_df = pd.concat([results_df, new_row], ignore_index=True)
+    return results_df
+
+#@st.cache_data
+def create_model_transformer(model_type, alphabet, hidden, enc_layers, dec_layers, n_heads, dropout, device, weights_path):
     # Создание модели в зависимости от указанного типа
     if model_type == 'model1':
         from models import model1
@@ -199,7 +225,7 @@ def create_model(model_type, alphabet, hidden, enc_layers, dec_layers, n_heads, 
 
     return model
 
-@st.cache_data
+#@st.cache_data
 def make_prediction_transforomer(_model, df, rotated, alphabet, confidence_threshold=0.5):
     preds = {}
     pil_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
@@ -207,10 +233,14 @@ def make_prediction_transforomer(_model, df, rotated, alphabet, confidence_thres
     idx2char = {idx: char for idx, char in enumerate(alphabet)}
 
     for index, row in df.iterrows():
-        if row['confidence'] < confidence_threshold:
-            x_min, x_max, y_min, y_max = row['bbox']
-            x_min, x_max = min(x_min, x_max), max(x_min, x_max)
-            y_min, y_max = min(y_min, y_max), max(y_min, y_max)
+        if row['easyocr_confidence'] < confidence_threshold and row['tesseract_confidence'] < confidence_threshold:
+            bbox = row['bbox']
+            x_coords = [point[0] for point in bbox]
+            y_coords = [point[1] for point in bbox]
+
+            # Находим минимальные и максимальные координаты
+            x_min, x_max = min(x_coords), max(x_coords)
+            y_min, y_max = min(y_coords), max(y_coords)
 
             cropped_image = pil_image.crop((x_min, y_min, x_max, y_max))
             prediction_result = prediction(model, cropped_image, char2idx, idx2char)
@@ -218,10 +248,33 @@ def make_prediction_transforomer(_model, df, rotated, alphabet, confidence_thres
 
     return preds
 
-@st.cache_data
+#@st.cache_data
 def create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_size=20):
     for index, prediction in pred.items():
         df.at[index, 'text'] = prediction
+
+    # Создаем список для хранения данных
+    data = []
+
+    for index, row in df.iterrows():
+        # Проверка, если уверенность обоих OCR меньше 0.5
+        if row['easyocr_confidence'] < 0.5 and row['tesseract_confidence'] < 0.5:
+            # Сохраняем текст из исходного DataFrame, если он есть
+            text = row['text'] if pd.notnull(row['text']) and row['text'].strip() else ""
+        else:
+            # Иначе выбираем текст на основе наибольшей уверенности
+            if pd.notnull(row['easyocr_confidence']) and pd.notnull(row['tesseract_confidence']):
+                text = row['easyocr_text'] if row['easyocr_confidence'] >= row['tesseract_confidence'] else row['tesseract_text']
+            else:
+                # Если один из показателей уверенности отсутствует, используем доступный текст
+                text = row['easyocr_text'] if pd.notnull(row['easyocr_confidence']) else row['tesseract_text']
+        
+        # Выбираем наибольшую уверенность
+        confidence = max(row['easyocr_confidence'], row['tesseract_confidence'])
+
+        data.append({'bbox': row['bbox'], 'text': text, 'confidence': confidence})
+
+    final_df = pd.DataFrame(data, columns=['bbox', 'text', 'confidence'])
     # Загрузка исходного изображения
     pil_original_image = Image.fromarray(cv2.cvtColor(rotated, cv2.COLOR_BGR2RGB))
 
@@ -236,8 +289,9 @@ def create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_si
     font = ImageFont.truetype(font_path, font_size)
 
     # Рисование текста на белом изображении в соответствии с bbox
-    for _, row in df.iterrows():
-        x_min, x_max, y_min, y_max = row['bbox']
+    for _, row in final_df.iterrows():
+        x_min, y_min = row['bbox'][0]
+        x_max, y_max = row['bbox'][1]
         text = row['text']
         text_position = (x_min, y_max - font_size)
         draw.text(text_position, text, fill=(0, 0, 0), font=font)
@@ -250,7 +304,7 @@ def create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_si
     combined_image.paste(pil_original_image, (0, 0))
     combined_image.paste(blank_image, (width, 0))
 
-    return combined_image
+    return combined_image, final_df
 
 st.title("OCR Преобразователь")
 uploaded_file = st.file_uploader("Загрузите изображение или PDF", type=["png", "jpg", "jpeg", "pdf"])
@@ -261,13 +315,16 @@ if uploaded_file is not None:
     page_number = st.selectbox('Выберите страницу для обработки', range(1, len(images) + 1)) - 1
     if st.button('Обработать страницу') and page_number is not None:
         rotated = get_page(images, page_number)
-        rotated, horizontal_list = rotated_image_check(rotated)
-        rotated_viz = visualize_text_detection(rotated, horizontal_list)
+        result = make_prediction_easyocr(rotated)
+        rotated, result = rotated_image_check(rotated, result)  
+        rotated_viz = visualize_text_detection(rotated, result)
+        #print(rotated_viz)
         st.image(rotated_viz, caption='Обнаружение текста')
-        df = make_prediction_tesseract(rotated, horizontal_list)
-        model = create_model(MODEL, ALPHABET, HIDDEN, ENC_LAYERS, DEC_LAYERS, N_HEADS, 0.0, DEVICE, WEIGHTS_PATH)
+        df = make_prediction_tesseract(rotated, result)
+        model = create_model_transformer(MODEL, ALPHABET, HIDDEN, ENC_LAYERS, DEC_LAYERS, N_HEADS, 0.0, DEVICE, WEIGHTS_PATH)
         pred = make_prediction_transforomer(model, df, rotated, ALPHABET, confidence_threshold=0.5)
-        combined_image = create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_size=20)
+        combined_image, final_df = create_combined_image(pred, df, rotated, font_path='DejaVuSans.ttf', font_size=20)
         st.image(combined_image, caption='Распознование текста')
-        text_to_display = ' '.join(df['text'].astype(str).tolist())
+        text_to_display = ' '.join(final_df['text'].astype(str).tolist())
         st.write(text_to_display)
+        
